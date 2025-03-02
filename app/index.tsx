@@ -6,7 +6,7 @@ import {
     TouchableOpacity,
     Modal,
     FlatList,
-    StyleSheet, 
+    StyleSheet,
 } from "react-native";
 import useFetchDateFact from "../hooks/useFetchDateFact";
 
@@ -16,6 +16,7 @@ export default function Home() {
     const [inputDay, setInputDay] = useState("");
     const [modalVisible, setModalVisible] = useState(false);
     const [validationError, setValidationError] = useState("");
+    const [displayFact, setDisplayFact] = useState(""); 
 
     const months = [
         { label: "January", value: "1", days: 31 },
@@ -32,21 +33,10 @@ export default function Home() {
         { label: "December", value: "12", days: 31 },
     ];
 
-    const selectMonth = (month: string) => {
-        setInputMonth(month);
-        setModalVisible(false);
-        setValidationError("");
-        validateAndFetchFact(month, inputDay);
-    };
-
-    const handleDayChange = (day: string) => {
-        setInputDay(day);
-        validateAndFetchFact(inputMonth, day);
-    };
-
-    const validateAndFetchFact = (month: string, day: string) => {
+    const validateAndFetchFact = async (month: string, day: string) => {
         if (!month || !day) {
             setValidationError("");
+            setDisplayFact("");
             return;
         }
 
@@ -54,13 +44,20 @@ export default function Home() {
         if (!selectedMonth) return;
 
         const dayNum = parseInt(day, 10);
+
         if (isNaN(dayNum) || dayNum < 1 || dayNum > selectedMonth.days) {
-            setValidationError("Please enter a valid day from (1-31) or (1-29) if it's February.");
+            setValidationError(`Please enter a valid day (1-${selectedMonth.days}).`);
+            setDisplayFact(""); 
             return;
         }
 
         setValidationError("");
-        fetchDateFact(month, day);
+        const fact = await fetchDateFact(month, day);
+        if (fact) {
+            setDisplayFact(fact);
+        } else {
+            setDisplayFact("No fact found for this date.");
+        }
     };
 
     return (
@@ -74,13 +71,24 @@ export default function Home() {
             </TouchableOpacity>
 
             <Modal visible={modalVisible} animationType="fade" transparent>
-                <TouchableOpacity style={styles.modalOverlay} onPress={() => setModalVisible(false)}>
+                <TouchableOpacity
+                    style={styles.modalOverlay}
+                    activeOpacity={1}
+                    onPress={() => setModalVisible(false)}
+                >
                     <View style={styles.modalContent}>
                         <FlatList
                             data={months}
                             keyExtractor={(item) => item.value}
                             renderItem={({ item }) => (
-                                <TouchableOpacity style={styles.monthItem} onPress={() => selectMonth(item.value)}>
+                                <TouchableOpacity
+                                    style={styles.monthItem}
+                                    onPress={() => {
+                                        setInputMonth(item.value);
+                                        setModalVisible(false);
+                                        setDisplayFact("");
+                                    }}
+                                >
                                     <Text style={styles.monthText}>{item.label}</Text>
                                 </TouchableOpacity>
                             )}
@@ -92,99 +100,42 @@ export default function Home() {
             <TextInput
                 style={styles.input}
                 placeholder="Enter Day"
+                placeholderTextColor="#999"
                 keyboardType="numeric"
                 value={inputDay}
-                onChangeText={handleDayChange}
+                onChangeText={(text) => {
+                    setInputDay(text);
+                    validateAndFetchFact(inputMonth, text);
+                }}
             />
 
             {validationError !== "" && <Text style={styles.errorText}>{validationError}</Text>}
             {loading && <Text style={styles.loading}>Loading...</Text>}
             {error && <Text style={styles.errorText}>{error.message}</Text>}
-            {dateFact !== "" && <Text style={styles.fact}>{dateFact}</Text>}
+            {displayFact !== "" && <Text style={styles.fact}>{displayFact}</Text>}
         </View>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-        padding: 20,
-        alignItems: "center",
-        backgroundColor: "#FFF3B0",
-    },
-    heading: {
-        fontSize: 24,
-        fontWeight: "bold",
-        marginBottom: 20,
-        color: "#540B0E",
-    },
-    dropdown: {
-        width: "80%",
-        padding: 12,
-        borderWidth: 1,
-        borderColor: "#540B0E",
-        borderRadius: 5,
-        backgroundColor: "white",
-        marginBottom: 10,
-        alignItems: "center",
-    },
-    dropdownText: {
-        fontSize: 16,
-        color: "#540B0E",
-    },
-    modalOverlay: {
-        flex: 1,
-        justifyContent: "center",
-        alignItems: "center",
-        backgroundColor: "rgba(0,0,0,0.3)",
-    },
-    modalContent: {
-        width: "80%",
-        backgroundColor: "white",
-        borderRadius: 8,
-        paddingVertical: 5,
-        elevation: 5,
-    },
-    monthItem: {
-        paddingVertical: 12,
-        alignItems: "center",
-        borderBottomWidth: 1,
-        borderBottomColor: "#ddd",
-    },
-    monthText: {
-        fontSize: 16,
-        color: "#540B0E",
-    },
-    input: {
-        width: "80%",
-        padding: 10,
-        borderWidth: 1,
-        borderColor: "#540B0E",
-        borderRadius: 5,
-        textAlign: "center",
-        backgroundColor: "white",
-        marginVertical: 10,
-        color: "#540B0E",
-    },
-    loading: {
-        color: "#540B0E",
-        fontSize: 16,
-        marginTop: 10,
-    },
-    errorText: {
-        color: "red",
-        marginTop: 10,
-        textAlign: "center",
-    },
-    fact: {
-        marginTop: 20,
-        fontSize: 16,
-        color: "#540B0E",
-        fontWeight: "bold",
-        textAlign: "center",
-        paddingHorizontal: 10,
-    },
+    container: { flex: 1, padding: 20, alignItems: "center", backgroundColor: "#FFF3B0" },
+    heading: { fontSize: 24, fontWeight: "bold", marginBottom: 20, color: "#540B0E" },
+    dropdown: { width: "80%", padding: 12, borderWidth: 1, borderColor: "#540B0E", borderRadius: 5, backgroundColor: "white", marginBottom: 10, alignItems: "center" },
+    dropdownText: { fontSize: 16, color: "#540B0E" },
+    modalOverlay: { flex: 1, justifyContent: "center", alignItems: "center", backgroundColor: "rgba(0,0,0,0.3)" },
+    modalContent: { width: "80%", backgroundColor: "white", borderRadius: 8, paddingVertical: 5, elevation: 5 },
+    monthItem: { paddingVertical: 12, alignItems: "center", borderBottomWidth: 1, borderBottomColor: "#ddd" },
+    monthText: { fontSize: 16, color: "#540B0E" },
+    input: { width: "80%", padding: 10, borderWidth: 1, borderColor: "#540B0E", borderRadius: 5, textAlign: "center", backgroundColor: "white", marginVertical: 10, color: "#540B0E" },
+    loading: { color: "#540B0E", fontSize: 16, marginTop: 10 },
+    errorText: { color: "red", marginTop: 10, textAlign: "center" },
+    fact: { marginTop: 20, fontSize: 16, color: "#540B0E", fontWeight: "bold", textAlign: "center" },
 });
+
+
+
+
+
 
 
 

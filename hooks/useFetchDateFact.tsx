@@ -6,28 +6,8 @@ export default function useFetchDateFact() {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<Error | null>(null);
 
-    function isLeapYear(year: number) {
-        return (year % 4 === 0 && year % 100 !== 0) || year % 400 === 0;
-    }
-
-    async function fetchDateFact(month: string, day: string) {
-        const monthNum = parseInt(month);
-        const dayNum = parseInt(day);
-        const currentYear = new Date().getFullYear();
-
-        const daysInMonth: { [key: number]: number } = {
-            1: 31,  2: isLeapYear(currentYear) ? 29 : 28,  3: 31,
-            4: 30,  5: 31,  6: 30,  7: 31,  8: 31,
-            9: 30, 10: 31, 11: 30, 12: 31
-        };
-
-        if (isNaN(monthNum) || isNaN(dayNum) || dayNum < 1 || dayNum > daysInMonth[monthNum]) {
-            setDateFact("");
-            setError(new Error(`Please enter a valid day from (1-31) or (1-29) if it's February.`));
-            return "";
-        }
-
-        const API_URL = `https://numbersapi.p.rapidapi.com/${monthNum}/${dayNum}/date`;
+    async function fetchDateFact(month: string, day: string): Promise<string | null> {
+        const API_URL = `https://numbersapi.p.rapidapi.com/${month}/${day}/date`;
 
         setLoading(true);
         setError(null);
@@ -51,7 +31,7 @@ export default function useFetchDateFact() {
             return data;
         } catch (error) {
             setError(new Error("Error fetching data. Please try again."));
-            return "";
+            return null;
         } finally {
             setLoading(false);
         }
@@ -59,6 +39,8 @@ export default function useFetchDateFact() {
 
     return { fetchDateFact, dateFact, loading, error };
 }
+
+
 
 
 
